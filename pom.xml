@@ -12,12 +12,6 @@
         <maven.compiler.target>1.8</maven.compiler.target>
     </properties>
 
-    <parent>
-        <groupId>org.modelui</groupId>
-        <artifactId>build-root</artifactId>
-        <version>2.2.0</version>
-        <relativePath>main-pom.xml</relativePath>
-    </parent>
 
     <dependencies>
         <dependency>

@@ -1,0 +1,38 @@
+<html>
+<body>
+<script src="http://ajax.googleapis.com/ajax/libs/jquery/1.3.2/jquery.min.js"></script>
+<script>
+    $(document).ready(function () {
+        $("#b2").click(function () {
+
+            filterXPath = $('#filterXPath').val();
+            systemDef = $('#systemDef').val();
+            filterLevel = $('#filterLevel').val();
+            outputType = $('#outputType').val();
+            //  str2=$('#t2').val();
+            $("#result").load("./tograph", {
+                'filterLevel': filterLevel,
+                'filterXPath': filterXPath,
+                'systemDefJSON': systemDef,
+                'outputType': outputType
+            }, function (data) {
+            });
+        })
+    });
+
+</script>
+<br>FilterXPath
+<br><input id=filterXPath name=filterXPath type=text value="/*">
+<br>Level<br><input id=filterLevel name=filterLevel type=text value="1">
+<br>OutputType<br>
+<select id=outputType name=outputType>
+    <option value="springy">springy</option>
+    <option value="mermaid">mermaid</option>
+    <option value="graphviz">graphviz</option>
+</select>
+<br>SystemDef<br><textarea cols="50" id=systemDef name=systemDef rows="10"></textarea>
+<br>
+<button class="btn btn-info" id=b2 type="button">Load Page</button>
+<div id='result'></div>
+</body>
+</html>

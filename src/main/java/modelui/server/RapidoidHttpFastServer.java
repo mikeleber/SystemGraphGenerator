@@ -4,6 +4,8 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Objects;
 
 import javax.json.JsonObject;
 import javax.xml.transform.TransformerException;
@@ -14,11 +16,13 @@ import modelui.util.mesh.Mesh;
 import modelui.util.mesh.RelationalTreeNode;
 import modelui.util.mesh.creator.RelationalJSONNodeCreator;
 import modelui.util.mesh.graphviz.GraphvizTreeVisitor;
+import modelui.util.mesh.mermaid.MermaidSubsystemTreeVisitor;
+import modelui.util.mesh.springy.SpringyTreeVisitor;
 import modelui.util.tree.xpath.TreeNodeXPathExecuterImpl;
+import org.apache.commons.lang3.StringUtils;
 import org.rapidoid.buffer.Buf;
 import org.rapidoid.http.AbstractHttpServer;
 import org.rapidoid.http.HttpStatus;
-import org.rapidoid.http.MediaType;
 import org.rapidoid.http.Req;
 import org.rapidoid.net.abstracts.Channel;
 import org.rapidoid.net.impl.RapidoidHelper;
@@ -45,39 +49,54 @@ public class RapidoidHttpFastServer extends AbstractHttpServer {
 
     public static void main(String[] args) throws Exception {
         new RapidoidHttpFastServer().listen(port);
-        On.get("/size").json((String msg) -> msg.length());
-        On.post("/graph").plain((Req req) -> {
-          return toGraphviz(new String(req.body()), req.param("filter"));
-            //handle aid and type
+        On.post("/tograph").plain((Req req) -> {
+            Map<String, Object> payload = req.data();
+            String systemDefinition = String.valueOf(payload.get("systemDefJSON"));
+            String filter = String.valueOf(payload.get("filterXPath"));
+            String outputType = String.valueOf(payload.get("outputType"));
+            int filterLevel = Integer.valueOf(Objects.toString(payload.get("filterLevel"), "1")).intValue();
+            filter = (StringUtils.isEmpty(filter) ? "/*" : filter);
+            return toGraph(systemDefinition, filter, filterLevel, outputType);
+
+
+        });
+        On.post("/springy").plain((Req req) -> {
+            Map<String, Object> payload = req.data();
+            String systemDefinition = String.valueOf(payload.get("systemDefJSON"));
+            String filter = String.valueOf(payload.get("filterXPath"));
+            int filterLevel = Integer.valueOf(Objects.toString(payload.get("filterLevel"), "1")).intValue();
+            return toSpringy(systemDefinition, StringUtils.isEmpty(filter) ? "/*" : filter, filterLevel);
         });
     }
 
-    //
-    public String toMermaidGraph2(String definition, String filterXPath) throws IOException {
-//        String json = FileUtils.readAsStringFromClass(this.getClass(), "systems.json", "utf-8");
+    private static String toGraph(String systemDefinition, String filter, int filterLevel, String outputType) {
         RelationalTreeNode node = new RelationalTreeNode();
-//        node.setMesh(new Mesh());
-//        node.getMesh().addRoot(node);
-//        JsonObject aDef = JSONHelper.createJson(json);
-//        node.parse(aDef.entrySet().iterator().next().getValue(), new RelationalJSONNodeCreator(node.getMesh()));
-//        node.initialize();
-//
-//        System.out.println(GraphvizTreeVisitor.toGraph(9, node.getMesh().createSystemTree(9, null)));
-        return "";
+        node.setMesh(new Mesh());
+        node.getMesh().addRoot(node);
+        JsonObject aDef = JSONHelper.createJson(systemDefinition);
+        node.parse(aDef.entrySet().iterator().next().getValue(), new RelationalJSONNodeCreator(node.getMesh()));
+        node.initialize();
+        if ("mermaid".equals(outputType)) {
+            return MermaidSubsystemTreeVisitor.toGraph(filterLevel, node.getMesh().createSystemTree(filterLevel, null)).toString();
+        } else if ("springy".equals(outputType)) {
+            return SpringyTreeVisitor.toGraph(filterLevel, node.getMesh().createSystemTree(filterLevel, null)).toString();
+
+        } else if ("graphviz".equals(outputType)) {
+            return GraphvizTreeVisitor.toGraph(filterLevel, node.getMesh().createSystemTree(filterLevel, null), null).toString();
+
+        }
+        return null;
     }
 
-    public static String toGraphviz(String json, String filterXPath) throws IOException, TransformerException {
-        // String json = FileUtils.readAsStringFromClass(RapidoidHttpFastServer.class, "systems.json", "utf-8");
+
+    public static String toSpringy(String json, String filterXPath, int filterLevel) throws IOException, TransformerException {
         RelationalTreeNode node = new RelationalTreeNode();
         node.setMesh(new Mesh());
         node.getMesh().addRoot(node);
         JsonObject aDef = JSONHelper.createJson(json);
         node.parse(aDef.entrySet().iterator().next().getValue(), new RelationalJSONNodeCreator(node.getMesh()));
         node.initialize();
-        node.hasRelations();
-        node.findRelations();
-
         List<RelationalTreeNode> selection = (List<RelationalTreeNode>) TreeNodeXPathExecuterImpl.getInstance().processXPathJaxen(filterXPath, node);
-        return GraphvizTreeVisitor.toGraph(9, node.getMesh().createSystemTree(9, new HashSet<>(selection)), null).toString();
+        return SpringyTreeVisitor.toGraph(filterLevel, node.getMesh().createSystemTree(filterLevel, new HashSet<>(selection))).toString();
     }
 }
